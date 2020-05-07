@@ -52,7 +52,7 @@ Sub set_color_condition_matches(field As Range, first_to)
     Set cond_last = field(2).FormatConditions.Add(Type:=xlExpression, Formula1:="=" & field(1).Address & "=" & first_to)
     cond_last.Priority = 2
 
-    Set cond_fail = field.FormatConditions.Add(Type:=xlExpression, Formula1:="=OR(SUM(" & field.Address & ") > " & 2 * first_to - 1 & ";OR(" & field(1).Address & "< 0;" & field(2).Address & " < 0))")
+    Set cond_fail = field.FormatConditions.Add(Type:=xlExpression, Formula1:="=OR(SUM(" & field.Address & ") > " & 2 * first_to - 1 & ";OR(" & field(1).Address & "< 0;" & field(2).Address & " < 0); OR(" & field(1).Address & ">" & first_to & "; " & field(2).Address & ">" & first_to & "))")
     cond_fail.Priority = 1
     
     With cond_green
@@ -144,6 +144,7 @@ Function create_match(p1 As String, p2 As String, x As Integer, y As Integer, fi
         .Font.Bold = True
         .Font.Size = 20
         .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
     
         Call outer_border_small(field)
         .Range(Cells(1, 1), Cells(1, 2)).Merge
@@ -151,6 +152,8 @@ Function create_match(p1 As String, p2 As String, x As Integer, y As Integer, fi
         
         .Range(Cells(2, 1), Cells(2, 2)).Merge
         .Cells(2, 1).Value = p2
+        .Cells(1, 3).NumberFormat = "0"
+        .Cells(2, 3).NumberFormat = "0"
         
         If p1 = "[NONE]" Or p2 = "[NONE]" Then
             Call cross_field(.Range(Cells(1, 3), Cells(2, 3)))
@@ -212,7 +215,7 @@ Sub create_matchups(parts_range As Range)
     
     Dim header_field As Range
     Set header_field = Range(Cells(y0 - 1, x0), Cells(y0 - 1, x0 + 3))
-    Call create_header(header_field, "Matchups")
+    Call create_header(header_field, "Matchups:")
     
     For round_nr = 1 To (n - 1)
         Call create_container(x0, y0 + (round_nr - 1) * 4, w, 3, "Round " & CStr(round_nr))
@@ -258,7 +261,7 @@ Sub create_points_table(parts As Range)
     .Interior.ColorIndex = 0
         Dim i As Integer
         For i = 1 To parts.Rows.Count + 1
-            'For kolonne'
+            'For columns'
             .Range(Cells(i, 1), Cells(i, 2)).Merge
             .Cells(i + 1, 1).Value = parts.Cells(i, 1).Value
             
@@ -268,7 +271,7 @@ Sub create_points_table(parts As Range)
             .Cells(i, 1).Font.Bold = True
             .Cells(i, 1).HorizontalAlignment = xlCenter
             
-            'For rad'
+            'For rows'
             .Range(Cells(1, 2 * i - 1), Cells(1, 2 * i)).Merge
             .Cells(1, 2 * i - 1 + 2).Value = parts.Cells(i, 1).Value
             .Cells(1, 2 * i - 1).Interior.Color = COLOR_FOREGROUND_1
@@ -291,7 +294,7 @@ Sub create_points_table(parts As Range)
     Call outer_border(table_field)
     Call inside_lines(table_field)
     Call color_diagonal(table_field)
-    Call create_header(header_field, "PointsTable:")
+    Call create_header(header_field, "Points table:")
 
 End Sub
 Public Sub QuickSort(vArray As Variant, inLow As Long, inHi As Long)
@@ -386,15 +389,15 @@ Sub create_standings(parts As Range)
             End If
         Next i
     
-        .Cells(1, 1).Value = "Plass:"
+        .Cells(1, 1).Value = "Place:"
         .Cells(1, 1).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 3).Value = "Navn:"
+        .Cells(1, 3).Value = "Name:"
         .Cells(1, 3).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 5).Value = "Poeng:"
+        .Cells(1, 5).Value = "Points:"
         .Cells(1, 5).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 7).Value = "Kamper:"
+        .Cells(1, 7).Value = "Matches:"
         .Cells(1, 7).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 9).Value = "Seiere:"
+        .Cells(1, 9).Value = "Wins:"
         .Cells(1, 9).Interior.Color = COLOR_FOREGROUND_1
         
         
@@ -427,7 +430,7 @@ Sub create_standings(parts As Range)
             offset_formula = "OFFSET(" & table_over.Address & ", MATCH(LARGE(" & sum_field.Address & "," & p & " )," & sum_field.Address & ",0),0,1," & .Columns.Count & ")"
             field.Cells(1 + p, 3).formula = "=INDEX(" & parts.Address & ", MATCH(LARGE(" & sum_field.Address & "," & p & ")," & sum_field.Address & ",0))"
             field.Cells(1 + p, 5).formula = "=INT(LARGE(" & sum_field.Address & "," & p & "))"
-            field.Cells(1 + p, 7).formula = "=COUNTIF(" & offset_formula & ",  "">= 2"" )"
+            field.Cells(1 + p, 7).formula = "=COUNTIF(" & offset_formula & ",  "">= " & group_first_to & """ )"
            
             field.Range(Cells(1 + p, 9), Cells(1 + p, 10)).UnMerge
             field.Cells(1 + p, 9).FormulaArray = "=COUNT(IF(IF(MOD(COLUMN(" & "XOX" & ")+1" & "," & "2)=0" & "," & "XOX" & "," & "0)=" & group_first_to & "," & "XOX" & "," & """""))"
@@ -438,8 +441,8 @@ Sub create_standings(parts As Range)
        
         End With
 End Sub
-Public Function get_match_winner(first As String, second As String) As Integer
-'Funksjonen returnerer en integer (1 eller 2) som indikerer vinneren av kampen'
+Public Function get_match_winner(first As String, second As String, first_to) As Integer
+'Returns an integer (1 or 2) based on the winner of the match. Fails to 3'
     Dim winner As Integer
     With Sheets("Groupstage").Range("Points")
         Dim down As Range
@@ -492,7 +495,7 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
     
     Set header_field = Sheets("Mainstage").Range(Cells(tables_vStart - 1, tables_hStart), Cells(tables_vStart - 1, tables_hStart + 3))
     Set field = Sheets("Mainstage").Range(Cells(tables_vStart, tables_hStart), Cells(tables_vStart + stand.Rows.Count - 1, tables_hStart + 7))
-    ThisWorkbook.Names.Add Name:="Adjusted_Standings", RefersTo:=field
+    ThisWorkbook.Names.Add Name:="AdjustedStandings", RefersTo:=field
     
     Call create_header(header_field, "Adjusted standings:")
     
@@ -552,13 +555,13 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
             End If
         Next i
     
-        .Cells(1, 1).Value = "Plass:"
+        .Cells(1, 1).Value = "Place:"
         .Cells(1, 1).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 3).Value = "Navn:"
+        .Cells(1, 3).Value = "Name:"
         .Cells(1, 3).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 5).Value = "Poeng:"
+        .Cells(1, 5).Value = "Points:"
         .Cells(1, 5).Interior.Color = COLOR_FOREGROUND_1
-        .Cells(1, 7).Value = "Ekstra:"
+        .Cells(1, 7).Value = "Extra:"
         .Cells(1, 7).Interior.Color = COLOR_FOREGROUND_1
         
     End With
@@ -576,6 +579,7 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
         anchor = 1
         Dim cluster_points As Integer
         
+        Dim tiebreaker_parts As New Collection
         For i = 1 To field.Rows.Count - 1
             Dim auto_matched As Boolean
             Dim needs_play As Boolean
@@ -611,9 +615,7 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
                         End If
                     Next p
                     
-                    'Debug.Print "Anchor: " & anchor & ", Cluster size: " & cluster_s
                     For p = anchor To anchor + cluster_s - 1
-                    'Debug.Print "Checking if " & parts.Cells(p).Value & " [" & dict.Item(parts.Cells(p).Value) & "] has Value " & i - anchor + 1
                         If dict.Item(parts.Cells(p).Value) = i - anchor + 1 Then
                             new_player = p
                             Exit For
@@ -628,8 +630,10 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
                 
             ' If the player has -2 as cluster rating, it is to play a tiebreaker set against the other player in the cluster
             ElseIf cluster_rating = -2 Then
-                needs_play = True
                 new_player = i
+                player_name = .Cells(new_player, 1).Value
+                tiebreaker_parts.Add player_name
+                needs_play = True
                 field.Cells(1 + i, 3).Interior.Color = COLOR_FAIL
             End If
                               
@@ -643,6 +647,33 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
                 field.Cells(1 + i, 7).Value = extra_points.Item(player_name)
             End If
         Next i
+        
+        ' Setting up the tiebreaker matches (if any)
+        Dim k As Integer
+        Dim h As Integer
+        Dim w As Integer
+        Dim s As Integer
+        Dim match As Range
+        h = IIf(tiebreaker_parts.Count / 2 < field.Rows.Count \ 3, tiebreaker_parts.Count / 2, field.Rows.Count \ 3)
+        w = Application.WorksheetFunction.RoundUp((tiebreaker_parts.Count / 2) / CDbl(h), 0)
+        For k = 1 To tiebreaker_parts.Count / 2
+            If k = 1 Then
+                Call create_container(16, tables_vStart, w * 4, h * 3)
+                Call create_header(Range(Cells(tables_vStart - 1, 16), Cells(tables_vStart - 1, 19)), "Tiebreakers:")
+            End If
+            Set match = create_match(tiebreaker_parts(2 * k - 1), tiebreaker_parts(2 * k), 17 + ((k - 1) \ h) * 4, tables_vStart + 1 + ((k - 1) Mod h) * 3, tiebreaker_first_to)
+            ThisWorkbook.Names.Add Name:="Tiebreaker" & CStr(k), RefersTo:=match
+            
+            
+            Dim cond_pass As FormatCondition
+            Dim index As Integer
+            index = Application.WorksheetFunction.match(tiebreaker_parts(2 * k - 1), field.Range(Cells(2, 3), Cells(field.Rows.Count, 3)), 0)
+            Debug.Print index
+            Set cond_pass = field.Range(Cells(1 + index, 3), Cells(2 + index, 3)).FormatConditions.Add(Type:=xlExpression, Formula1:="=AND(OR(" & match(1).Address & "=" & tiebreaker_first_to & ";" & match(2).Address & "=" & tiebreaker_first_to & ");SUM(" & match.Address & ")<=" & 2 * tiebreaker_first_to - 1 & ";NOT(OR(" & match(1).Address & "<0;" & match(2).Address & "<0)))")
+            With cond_pass
+                .Interior.ColorIndex = 0
+            End With
+        Next k
     End With
     
 End Sub
@@ -666,8 +697,6 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
         points_dict.Add Key:=stand.Cells(o, 3).Value, Item:=stand.Cells(o, 5).Value
     Next o
     
-
-    
     With Range(stand.Cells(2, 5), stand.Cells(stand.Rows.Count, 5))
         n_p = .Rows.Count
         
@@ -689,87 +718,90 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
                 End If
             Next n
             
-            'Debug.Print "i, anchor, cluster size and n_p"
-            'Debug.Print i & ", "; anchor & ", " & cluster_size & ", " & n_p
-            
             i = i + cluster_size
 
             
-            '------------------------------ Regler ----------------------------------'
+            '------------------------------ Rules ----------------------------------'
+            'Clusters are groups of participants that have the same score after the group stage'
+            'Since there can exist several clusters of size 1, 2 or more, each of these three cases _
+            must be handled differently.
+            
+            'For clusters of size three or more, the rules are written such that each player is given _
+            extra points for: _
+                * Total number of wins _
+                * Number of games won against players in the cluster
+            'If this cluster fails to be solved by the addition of these extra points, the standings of _
+            the cluster is chosen randomly. I hate random..
+            
             Dim valid As Boolean
             valid = True
             
-            'Dersom clusteret er større enn 2 må måtiebreakeren løses med andre midler'
+            'For the case where a cluster is of size 2'
             If cluster_size = 2 Then
             
                 extra_points_dict.Add Key:=parts(anchor).Value, Item:=0
                 extra_points_dict.Add Key:=parts(anchor + 1).Value, Item:=0
-                'Dersom de to midterste har lik poengsum. Disse skal møtes i første kamp uansett'
+                ' If the the two players in the middle of the standings are equal in points, they will meet in the first round of mainstage anyways.
                 If n_p Mod 2 = 0 And anchor = n_p / 2 And extra_matches = 0 Then
                     valid = False
                 End If
                 
-                'For deltakertall som ikke tilfredsstiller 2^n må de lavest seeded spillerene spille introduksjonskamper uansett
-                Dim k As Integer
+                'In the case of a number of participants that does not satisfy 2^n, the following players will meet in the first round of mainstage anyways.
+                'Dim k As Integer
                 'For k = 1 To extra_matches
                     'If anchor = n_p - (2 * k - 1) Then valid = False
                 'Next k
                 
-                'Paret slipper å spille tiebraker'
+                'If the cluster of 2 players does not need to meet for a tiebreaker match'
                 If valid = False Then
                     dict.Add Key:=parts(anchor).Value, Item:=-1
                     dict.Add Key:=parts(anchor + 1).Value, Item:=-1
                     
-                'Paret må avgjøre stilling i en tiebraker'
+                'If the cluster of 2 players need to meet for a tiebreaker match'
                 Else:
                     dict.Add Key:=parts(anchor).Value, Item:=-2
                     dict.Add Key:=parts(anchor + 1).Value, Item:=-2
                 End If
                 
-            'Håndtering av tilfellet hvor clusteret er større enn 2'
+            'If the cluster is of size 2'
             ElseIf cluster_size > 2 Then
                 Dim win As Integer
                 Dim points() As Integer
                 Dim equals_points() As Integer
                 
-                'Teller opp samlet seiere for hver spiller i clusteret'
+                'Counting the number of victories for each player in the cluster'
                 ReDim points(1 To cluster_size) As Integer
                 ReDim equals_points(1 To cluster_size) As Integer
                 Dim equal_clusters As Integer
                 
+                Dim k As Integer
                 For k = anchor To cluster_size - 1 + anchor
                     points(k - anchor + 1) = points(k - anchor + 1) + get_wins_count(parts.Cells(k).Value)
-                    'Debug.Print parts.Cells(k).Value & " has " & points(k - anchor + 1) & " wins and cluster index: " & k - anchor + 1
                     
-                    'Dersom noen av spillerene har like mange seiere telles kamper de har spilt mot hverandre tidligere i gruppespillet som avgjørende'
+                    'If the addition of extra points for the victories still has not resolved the cluster, points are given for each win against players in the cluster'
                     Dim j As Integer
                     For j = k + 1 To cluster_size - 1 + anchor
-                        win = get_match_winner(parts.Cells(k).Value, parts.Cells(j).Value)
+                        win = get_match_winner(parts.Cells(k).Value, parts.Cells(j).Value, group_first_to)
                         If win = 1 Then
                             points(k - anchor + 1) = points(k - anchor + 1) + 1
-                            'Debug.Print parts.Cells(k).Value & " won over " & parts.Cells(j) & " and now has " & points(k - anchor + 1) & " points."
                         ElseIf win = 2 Then
                             points(j - anchor + 1) = points(j - anchor + 1) + 1
-                            'Debug.Print parts.Cells(j).Value & " won over " & parts.Cells(k) & " and now has " & points(j - anchor + 1) & " points."
                         End If
                     Next j
                 Next k
                 
                 For k = anchor To cluster_size - 1 + anchor
-                    'Dersom spillerene enda har like poengsummer velges vinneren av clusteret tilfeldig :('
+                    'If the cluster still has not resolved, the standings are chosen randomly :(
                     For j = k + 1 To cluster_size - 1 + anchor
                         If points(k - anchor + 1) = points(j - anchor + 1) Then
-                            'MsgBox parts.Cells(k).Value & ": p = " & equals_points(k - anchor + 1) & ", i = " & k - anchor + 1 & " EQUALS " & Cells(j + anchor - 1).Value & ": p = " & equals_points(j) & ", i = " & j
-                            'If equals_points(k - anchor + 1) = equals_points(j - anchor + 1) Then
                             equals_points(j - anchor + 1) = equals_points(j - anchor + 1) + Int(100 / cluster_size * Rnd) + 1 'Byttes ut mot en funksjon som genererer unike verdier'
                             equals_points(k - anchor + 1) = equals_points(k - anchor + 1) + Int(100 / cluster_size * Rnd) + 1
-                            'End If
                         End If
                     Next j
                 Next k
 
             
-                'Lager justerte standings etter behandling av algoritmen over'
+                'Algorithm for sorting and matching the players in the cluster after additional points are given'
                 Dim pointsC() As Integer
                 Dim equals_pointsC() As Integer
                 pointsC = points
@@ -777,18 +809,12 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
             
                 Call QuickSort(pointsC, 1, CLng(cluster_size))
                 Call QuickSort(equals_pointsC, 1, CLng(cluster_size))
-                'Debug.Print "Sorted points: "
-                'Dim jj As Long
-                'For jj = 1 To cluster_size
-                    'Debug.Print pointsC(jj) & ", " & equals_pointsC(jj)
-                'Next jj
                 Dim z As Integer
                 z = cluster_size
                 For k = 1 To cluster_size
                 Dim p As Integer
                     For p = 1 To cluster_size
                         For j = 1 To cluster_size
-                            'Debug.Print pointsC(k) & "=" & points(j) & " and " & equals_pointsC(p) & "=" & equals_points(j) & ", indicies=" & k & p & j
                             If pointsC(k) = points(j) And equals_pointsC(p) = equals_points(j) Then
                                 If Not dict.Exists(parts(j + anchor - 1).Value) Then
                                     dict.Add Key:=parts(j + anchor - 1).Value, Item:=z
@@ -803,7 +829,7 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
                     Next p
                 Next k
             
-            'Dersom clusteret bare består av en spiller, altså at spilleren har garantert standing'
+            'If the cluster is of size 1, the player has a guaranteed standing'
             Else:
                 If Not dict.Exists(parts(anchor).Value) Then
                     dict.Add Key:=parts(anchor).Value, Item:=0
@@ -811,19 +837,9 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
                 End If
             End If
         Loop
-        
-        'Debug.Print "Debugging dictionary of size " & extra_points_dict.Count & " :"
-        'Dim ii As Long
-        'For ii = 0 To extra_points_dict.Count - 1
-            'Debug.Print extra_points_dict.Keys()(ii), extra_points_dict.Items()(ii)
-        'Next ii
-    
     End With
     
     Call create_adjusted_standings(dict, points_dict, extra_points_dict)
-    Call create_match("TEST1", "TEST2", 20, tables_vStart, tiebreaker_first_to)
-    
-    
     
 End Sub
 
@@ -843,15 +859,23 @@ Sub create_upperbracket(stand As Range)
         n = 2 ^ i
         i = i + 1
     Loop
-    
+
     byes = n - parts.Rows.Count
     
-    extra_matches = parts.Rows.Count - byes
+    extra_matches = (parts.Rows.Count - byes) / 2
     Call create_tiebrakers(stand, extra_matches)
-
     
-    'Set field = Range(Cells(), Cells())
-    'MsgBox extra_matches
+    Dim ad_stand As Range
+    Set ad_stand = Sheets("Mainstage").Range("Adjusted_Standings")
+    
+    Dim k As Integer
+    
+    For k = byes + 1 To parts.Rows.Count
+        'Call create_match("=3+2", "=3*6", 22, tables_vStart + k * 3, 2)
+        If ad_stand.Cells(1 + k, 3).Interior.Color = COLOR_FAIL Then
+        End If
+        
+    Next k
     
     
 End Sub
