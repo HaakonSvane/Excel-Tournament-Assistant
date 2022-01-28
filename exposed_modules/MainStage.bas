@@ -3,6 +3,7 @@ Attribute VB_Name = "MainStage"
 Sub main_mainstage()
     Application.ScreenUpdating() = False
     Application.EnableEvents = False
+    
     Call set_globals
     Dim standings As Range
     Dim parts As Range

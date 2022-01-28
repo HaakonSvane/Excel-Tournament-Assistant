@@ -1,11 +1,21 @@
 Attribute VB_Name = "Utilities"
 Option Explicit
 Public dict As New Collection
-Public n_par As Integer
+
+Sub delete_all_names()
+    Dim rName As name
+    For Each rName In ThisWorkbook.names
+        If InStr(1, rName.name, "_xlfn.") <> 1 Then
+            ThisWorkbook.names(rName.name).Delete
+        End If
+    Next rName
+
+End Sub
 
 Sub clear_area(field As Range)
     With field
         .Cells.ClearContents
+        .Cells.ClearFormats
         .Borders.LineStyle = xlNone
         .Borders(xlDiagonalDown).LineStyle = xlNone
         .Borders(xlDiagonalUp).LineStyle = xlNone
@@ -135,7 +145,10 @@ Sub create_container(x As Integer, y As Integer, w As Integer, h As Integer, Opt
     Call outer_border(container)
     
 End Sub
-Function create_match(p1 As String, p2 As String, x As Integer, y As Integer, first_to) As Range
+Function create_match(p1 As String, p2 As String, x As Integer, y As Integer, first_to, Optional p1_formula As Boolean = False, Optional p2_formula As Boolean = False) As Range
+' Creates a match between p1 and p2, if optionals p1_formula and p2_formula are set to true, the namefields for p1 and p2 will respectively be treated as Excel formulas instead of strings. This is useful for when a match must be made _
+when either or both players are unknown
+
     Dim field As Range
     Set field = Range(Cells(y, x), Cells(y + 1, x + 2))
        
@@ -148,10 +161,24 @@ Function create_match(p1 As String, p2 As String, x As Integer, y As Integer, fi
     
         Call outer_border_small(field)
         .Range(Cells(1, 1), Cells(1, 2)).Merge
-        .Cells(1, 1).Value = p1
-        
         .Range(Cells(2, 1), Cells(2, 2)).Merge
-        .Cells(2, 1).Value = p2
+        
+        If p1_formula = True Then
+            .Cells(1, 1).NumberFormat = "General"
+            .Cells(1, 1).formula = p1
+        Else
+            .Cells(1, 1).NumberFormat = "@"
+            .Cells(1, 1).Value = p1
+        End If
+        
+        If p2_formula = True Then
+            .Cells(2, 1).NumberFormat = "General"
+            .Cells(2, 1).formula = p2
+        Else
+            .Cells(2, 1).NumberFormat = "@"
+            .Cells(2, 1).Value = p2
+        End If
+        
         .Cells(1, 3).NumberFormat = "0"
         .Cells(2, 3).NumberFormat = "0"
         
@@ -178,8 +205,8 @@ Sub create_matchups(parts_range As Range)
     
     Dim parts As New Collection
 
-    n = parts_range.Rows.Count
-    n_real = parts_range.Rows.Count
+    n = n_par
+    n_real = n_par
     
     Set lookups_h = Range(Cells(tables_vStart, 9), Cells(tables_vStart, 9 + (n_real - 1) * 2))
     Set lookups_v = Range(Cells(tables_vStart + 1, 7), Cells(tables_vStart + n_real, 7))
@@ -255,12 +282,12 @@ Sub create_points_table(parts As Range)
     Set table_inside = Range(Cells(tables_vStart + 1, 7 + 2), Cells(tables_vStart + parts.Rows.Count, 6 + (parts.Rows.Count + 1) * 2))
     Set header_field = Range(Cells(tables_vStart - 1, 7), Cells(tables_vStart - 1, 10))
     
-    ThisWorkbook.Names.Add Name:="Points", RefersTo:=table_field
+    ThisWorkbook.names.Add name:="Points", RefersTo:=table_field
     
     With table_field
     .Interior.ColorIndex = 0
         Dim i As Integer
-        For i = 1 To parts.Rows.Count + 1
+        For i = 1 To n_par + 1
             'For columns'
             .Range(Cells(i, 1), Cells(i, 2)).Merge
             .Cells(i + 1, 1).Value = parts.Cells(i, 1).Value
@@ -270,6 +297,7 @@ Sub create_points_table(parts As Range)
             .Cells(i, 1).Font.Size = 20
             .Cells(i, 1).Font.Bold = True
             .Cells(i, 1).HorizontalAlignment = xlCenter
+            .Cells(i, 1).VerticalAlignment = xlCenter
             
             'For rows'
             .Range(Cells(1, 2 * i - 1), Cells(1, 2 * i)).Merge
@@ -279,6 +307,7 @@ Sub create_points_table(parts As Range)
             .Cells(1, 2 * i - 1).Font.Size = 20
             .Cells(1, 2 * i - 1).Font.Bold = True
             .Cells(1, 2 * i - 1).HorizontalAlignment = xlCenter
+            .Cells(1, 2 * i - 1).VerticalAlignment = xlCenter
             
         Next i
     End With
@@ -287,6 +316,7 @@ Sub create_points_table(parts As Range)
     With table_inside
         .NumberFormat = "General"
         .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
         .Font.Size = 20
         .Font.Bold = True
     End With
@@ -336,13 +366,13 @@ Sub create_standings(parts As Range)
     Dim table_over As Range
     Dim sum_field As Range
     
-    Set field = Range(Cells(tables_vStart + parts.Rows.Count + 3, 7), Cells(tables_vStart + parts.Rows.Count + 3 + parts.Rows.Count, 16))
-    ThisWorkbook.Names.Add Name:="Standings", RefersTo:=field
-    Set header_field = Range(Cells(tables_vStart + parts.Rows.Count + 2, 7), Cells(tables_vStart + parts.Rows.Count + 2, 10))
-    Set table = Range(Cells(tables_vStart + 1, 7 + 2), Cells(tables_vStart + parts.Rows.Count, 7 + parts.Rows.Count * 2 + 1))
-    Set table_over = Range(Cells(tables_vStart, 7 + 2), Cells(tables_vStart, 7 + parts.Rows.Count * 2 + 1))
+    Set field = Range(Cells(tables_vStart + n_par + 3, 7), Cells(tables_vStart + n_par + 3 + n_par, 16))
+    ThisWorkbook.names.Add name:="Standings", RefersTo:=field
+    Set header_field = Range(Cells(tables_vStart + n_par + 2, 7), Cells(tables_vStart + n_par + 2, 10))
+    Set table = Range(Cells(tables_vStart + 1, 7 + 2), Cells(tables_vStart + n_par, 7 + n_par * 2 + 1))
+    Set table_over = Range(Cells(tables_vStart, 7 + 2), Cells(tables_vStart, 7 + n_par * 2 + 1))
     
-    Set sum_field = Range(Cells(tables_vStart + 1, 7 + 2 + table.Columns.Count), Cells(tables_vStart + parts.Rows.Count, 7 + 2 + table.Columns.Count))
+    Set sum_field = Range(Cells(tables_vStart + 1, 7 + 2 + table.Columns.Count), Cells(tables_vStart + n_par, 7 + 2 + table.Columns.Count))
 
     Call create_header(header_field, "Standings:")
     field.Interior.ColorIndex = 0
@@ -352,23 +382,27 @@ Sub create_standings(parts As Range)
         .Font.Size = 22
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
     End With
 
     With field.Range(Cells(2, 1), Cells(field.Rows.Count, 1))
         .Font.Size = 22
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
     End With
     
     With field.Range(Cells(2, 3), Cells(field.Rows.Count, field.Columns.Count))
         .Range(Cells(1, 1), Cells(.Rows.Count, 1)).Font.Bold = False
         .Range(Cells(1, 1), Cells(.Rows.Count, 1)).Font.Size = 22
         .Range(Cells(1, 1), Cells(.Rows.Count, 1)).HorizontalAlignment = xlCenter
+        .Range(Cells(1, 1), Cells(.Rows.Count, 1)).VerticalAlignment = xlCenter
         .Range(Cells(1, 1), Cells(.Rows.Count, 1)).NumberFormat = "General"
         
         .Range(Cells(1, 3), Cells(.Rows.Count, 7)).Font.Bold = True
         .Range(Cells(1, 3), Cells(.Rows.Count, 7)).Font.Size = 22
         .Range(Cells(1, 3), Cells(.Rows.Count, 7)).HorizontalAlignment = xlCenter
+        .Range(Cells(1, 3), Cells(.Rows.Count, 7)).VerticalAlignment = xlCenter
         .Range(Cells(1, 3), Cells(.Rows.Count, 7)).NumberFormat = "General"
 
     End With
@@ -376,7 +410,7 @@ Sub create_standings(parts As Range)
     
     With field
         Dim i As Integer
-        For i = 1 To field.Rows.Count
+        For i = 1 To n_par + 1
             .Range(Cells(i, 1), Cells(i, 2)).Merge
             .Range(Cells(i, 3), Cells(i, 4)).Merge
             .Range(Cells(i, 5), Cells(i, 6)).Merge
@@ -409,9 +443,9 @@ Sub create_standings(parts As Range)
     
     Dim adds As Range
     With table
-        For i = 1 To parts.Rows.Count
+        For i = 1 To n_par
             Dim n As Integer
-            For n = 1 To parts.Rows.Count
+            For n = 1 To n_par
                 If n = 1 Then
                     Set adds = Range(.Cells(i, 2 * n - 1), .Cells(i, 2 * n - 1))
                 Else
@@ -426,7 +460,7 @@ Sub create_standings(parts As Range)
         Dim offset_formula As String
         
         Dim p As Integer
-        For p = 1 To parts.Rows.Count
+        For p = 1 To n_par
             offset_formula = "OFFSET(" & table_over.Address & ", MATCH(LARGE(" & sum_field.Address & "," & p & " )," & sum_field.Address & ",0),0,1," & .Columns.Count & ")"
             field.Cells(1 + p, 3).formula = "=INDEX(" & parts.Address & ", MATCH(LARGE(" & sum_field.Address & "," & p & ")," & sum_field.Address & ",0))"
             field.Cells(1 + p, 5).formula = "=INT(LARGE(" & sum_field.Address & "," & p & "))"
@@ -441,7 +475,40 @@ Sub create_standings(parts As Range)
        
         End With
 End Sub
+Public Function get_match_winner_from_range(field As Range, first_to As Integer) As Integer
+    Dim win As Integer
+    With field
+        If (.Cells(1, 1).Value = first_to) And (Not (.Cells(1, 1).Value + .Cells(2, 1).Value > 2 * first_to - 1)) And (.Cells(1, 1).Value >= 0 And .Cells(2, 1).Value >= 0) Then
+            win = 1
+        ElseIf (.Cells(2, 1).Value = first_to) And (Not (.Cells(1, 1).Value + .Cells(2, 1).Value > 2 * first_to - 1)) And (.Cells(1, 1).Value >= 0 And .Cells(2, 1).Value >= 0) Then
+            win = 2
+        Else
+            win = 0
+        End If
+    End With
+    get_match_winner_from_range = win
+End Function
+Public Function get_p_won_tiebreaker(p As Integer) As Boolean
+    ' I need an excel formula to insert into the empty elimination cell that fills in player name when the tiebreaker is settled.
+    ' The formula can use get_match_winner_from_range, but needs the range of the match. The recursive function only detects the player number _
+    so I need this function to tie a player number up to a specific range... Well, really I need to input a standings number, and insert its name ONLY _
+    when the tiebreaker of that player is played.
+    Dim i As Integer
+    Dim match_num As Integer
+    match_num = 1 ' 0???
+    With Range(Cells(tables_vStart + 1, 9), Cells(tables_vStart + n_par, 9))
+            While i < n_par
+                If .Cells(i, 1).Interior.Color = COLOR_FAIL Then
+                    If i + 1 = p Then
+                    
+                End If
+            Loop
+    End With
+End Function
 Public Function get_match_winner(first As String, second As String, first_to) As Integer
+'Shit function. Think I will replace this with a more general algorithm later. Had I known this project would be so big, I think I would have _
+ dedicated some more time to learning how classes work in VBA...
+ 
 'Returns an integer (1 or 2) based on the winner of the match. Fails to 3'
     Dim winner As Integer
     With Sheets("Groupstage").Range("Points")
@@ -470,6 +537,12 @@ Public Function get_match_winner(first As String, second As String, first_to) As
     
 End Function
 
+Public Function get_cell_color(field As Range) As Long
+    get_cell_color = field.Cells(1, 1).Interior.Color
+End Function
+Public Function get_conditional_cell_color(field As Range) As Long
+    get_conditional_cell_color = field.DisplayFormat.Interior.Color
+End Function
 Public Function get_wins_count(player As String)
     Dim wins As Integer
     With Sheets("Groupstage").Range("Standings")
@@ -493,10 +566,10 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
     Set stand = Sheets("Groupstage").Range("Standings")
     Set parts = Range(stand.Cells(2, 3), stand.Cells(stand.Rows.Count, 3))
     
+    
     Set header_field = Sheets("Mainstage").Range(Cells(tables_vStart - 1, tables_hStart), Cells(tables_vStart - 1, tables_hStart + 3))
     Set field = Sheets("Mainstage").Range(Cells(tables_vStart, tables_hStart), Cells(tables_vStart + stand.Rows.Count - 1, tables_hStart + 7))
-    ThisWorkbook.Names.Add Name:="AdjustedStandings", RefersTo:=field
-    
+    ThisWorkbook.names.Add name:="AdjustedStandings", RefersTo:=field
     Call create_header(header_field, "Adjusted standings:")
     
     field.Interior.ColorIndex = 0
@@ -628,7 +701,7 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
                 new_player = i
                 field.Cells(1 + i, 3).Interior.Color = COLOR_PASS
                 
-            ' If the player has -2 as cluster rating, it is to play a tiebreaker set against the other player in the cluster
+            ' If the players has -2 as cluster rating, they are to play a tiebreaker set against each other
             ElseIf cluster_rating = -2 Then
                 new_player = i
                 player_name = .Cells(new_player, 1).Value
@@ -654,33 +727,44 @@ Sub create_adjusted_standings(dict As Dictionary, points As Dictionary, extra_po
         Dim w As Integer
         Dim s As Integer
         Dim match As Range
-        h = IIf(tiebreaker_parts.Count / 2 < field.Rows.Count \ 3, tiebreaker_parts.Count / 2, field.Rows.Count \ 3)
-        w = Application.WorksheetFunction.RoundUp((tiebreaker_parts.Count / 2) / CDbl(h), 0)
         For k = 1 To tiebreaker_parts.Count / 2
             If k = 1 Then
+                    h = IIf(tiebreaker_parts.Count / 2 < field.Rows.Count \ 3, tiebreaker_parts.Count / 2, field.Rows.Count \ 3)
+                    w = Application.WorksheetFunction.RoundUp((tiebreaker_parts.Count / 2) / CDbl(h), 0)
                 Call create_container(16, tables_vStart, w * 4, h * 3)
                 Call create_header(Range(Cells(tables_vStart - 1, 16), Cells(tables_vStart - 1, 19)), "Tiebreakers:")
             End If
             Set match = create_match(tiebreaker_parts(2 * k - 1), tiebreaker_parts(2 * k), 17 + ((k - 1) \ h) * 4, tables_vStart + 1 + ((k - 1) Mod h) * 3, tiebreaker_first_to)
-            ThisWorkbook.Names.Add Name:="Tiebreaker" & CStr(k), RefersTo:=match
+            ThisWorkbook.names.Add name:="Tiebreaker" & CStr(k), RefersTo:=match
             
             
             Dim cond_pass As FormatCondition
             Dim index As Integer
             index = Application.WorksheetFunction.match(tiebreaker_parts(2 * k - 1), field.Range(Cells(2, 3), Cells(field.Rows.Count, 3)), 0)
-            Debug.Print index
             Set cond_pass = field.Range(Cells(1 + index, 3), Cells(2 + index, 3)).FormatConditions.Add(Type:=xlExpression, Formula1:="=AND(OR(" & match(1).Address & "=" & tiebreaker_first_to & ";" & match(2).Address & "=" & tiebreaker_first_to & ");SUM(" & match.Address & ")<=" & 2 * tiebreaker_first_to - 1 & ";NOT(OR(" & match(1).Address & "<0;" & match(2).Address & "<0)))")
             With cond_pass
                 .Interior.ColorIndex = 0
             End With
+            
+            field.Cells(1 + index, 3).NumberFormat = "General"
+            field.Cells(2 + index, 3).NumberFormat = "General"
+            field.Cells(1 + index, 3).formula = "=IF(" & match(1).Address & "=" & match(2).Address & "," & match.Offset(0, -2)(1).Address & ",INDEX(" & match.Offset(0, -2).Address & ",MATCH(MAX(" & match.Address & ")," & match.Address & ",0)))"
+            field.Cells(2 + index, 3).formula = "=IF(" & field.Cells(1 + index, 3).Address & "=" & match.Offset(0, -2)(1).Address & ", " & match.Offset(0, -2)(2).Address & "," & match.Offset(0, -2)(1).Address & ")"
+            
+            field.Cells(1 + index, 7).NumberFormat = "General"
+            field.Cells(2 + index, 7).NumberFormat = "General"
+            field.Cells(1 + index, 7).formula = "=INDEX(" & match.Address & ",MATCH(" & field.Cells(1 + index, 3).Address & "," & match.Offset(0, -2).Address & ",0))"
+            field.Cells(2 + index, 7).formula = "=INDEX(" & match.Address & ",MATCH(" & field.Cells(2 + index, 3).Address & "," & match.Offset(0, -2).Address & ",0))"
+            
+            
+            
         Next k
     End With
     
 End Sub
 
-Sub create_tiebrakers(stand As Range, extra_matches As Integer)
-    
-    Dim n_p As Long
+Sub create_tiebrakers(stand As Range, byes As Integer)
+
     Dim dict As Dictionary
     Dim points_dict As Dictionary
     Dim extra_points_dict As Dictionary
@@ -693,12 +777,11 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
     
     'Populating the score dictionary
     Dim o As Integer
-    For o = 2 To stand.Rows.Count
+    For o = 2 To n_par + 1
         points_dict.Add Key:=stand.Cells(o, 3).Value, Item:=stand.Cells(o, 5).Value
     Next o
     
     With Range(stand.Cells(2, 5), stand.Cells(stand.Rows.Count, 5))
-        n_p = .Rows.Count
         
         Dim i As Integer
         i = 1
@@ -741,16 +824,13 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
             
                 extra_points_dict.Add Key:=parts(anchor).Value, Item:=0
                 extra_points_dict.Add Key:=parts(anchor + 1).Value, Item:=0
-                ' If the the two players in the middle of the standings are equal in points, they will meet in the first round of mainstage anyways.
-                If n_p Mod 2 = 0 And anchor = n_p / 2 And extra_matches = 0 Then
+                
+                ' Because of how the players are matched in the mainstage, if an anchor satisfies (P+B)/2, where P is the number _
+                of participants and B is the number of byes, these two players will meet in the first extra round of matches anyways _
+                and do not need to play a tiebreaker game.
+                If anchor = (.Rows.Count + byes) / 2 Then
                     valid = False
                 End If
-                
-                'In the case of a number of participants that does not satisfy 2^n, the following players will meet in the first round of mainstage anyways.
-                'Dim k As Integer
-                'For k = 1 To extra_matches
-                    'If anchor = n_p - (2 * k - 1) Then valid = False
-                'Next k
                 
                 'If the cluster of 2 players does not need to meet for a tiebreaker match'
                 If valid = False Then
@@ -763,7 +843,7 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
                     dict.Add Key:=parts(anchor + 1).Value, Item:=-2
                 End If
                 
-            'If the cluster is of size 2'
+            'If the cluster is of size greater than 2'
             ElseIf cluster_size > 2 Then
                 Dim win As Integer
                 Dim points() As Integer
@@ -794,7 +874,7 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
                     'If the cluster still has not resolved, the standings are chosen randomly :(
                     For j = k + 1 To cluster_size - 1 + anchor
                         If points(k - anchor + 1) = points(j - anchor + 1) Then
-                            equals_points(j - anchor + 1) = equals_points(j - anchor + 1) + Int(100 / cluster_size * Rnd) + 1 'Byttes ut mot en funksjon som genererer unike verdier'
+                            equals_points(j - anchor + 1) = equals_points(j - anchor + 1) + Int(100 / cluster_size * Rnd) + 1
                             equals_points(k - anchor + 1) = equals_points(k - anchor + 1) + Int(100 / cluster_size * Rnd) + 1
                         End If
                     Next j
@@ -843,39 +923,131 @@ Sub create_tiebrakers(stand As Range, extra_matches As Integer)
     
 End Sub
 
+
+Public Function Log2(x As Integer)
+    Log2 = Log(x) / Log(2)
+End Function
+
+Sub rec(i As Integer, p As Integer, k As Integer, j As Integer, ByRef player_array() As Integer)
+    Dim a As Integer
+    Dim b As Integer
+    a = p
+    b = 2 ^ i + 1 - a
+    If i = k Then
+        player_array(j) = a
+        player_array(j + 1) = 2 ^ k + 1 - a
+        j = j + 2
+    Else
+        Call rec(i + 1, a, k, j, player_array)
+        Call rec(i + 1, b, k, j, player_array)
+    End If
+End Sub
+
 Sub create_upperbracket(stand As Range)
     Dim byes As Integer
     Dim extra_matches As Integer
-    Dim n As Integer
-    Dim i As Integer
+    Dim j As Integer
+    Dim k As Integer
     
     Dim field As Range
     Dim parts As Range
     Set parts = Sheets("Groupstage").Range("Parts")
-    
-    i = 0
-    
-    Do While n < parts.Rows.Count
-        n = 2 ^ i
-        i = i + 1
-    Loop
 
-    byes = n - parts.Rows.Count
+    ' Finding the lowest integer j such that 2^j >= n_par
+    Do While 2 ^ j < n_par
+        j = j + 1
+    Loop
     
-    extra_matches = (parts.Rows.Count - byes) / 2
-    Call create_tiebrakers(stand, extra_matches)
+    ' Finding the highest integer k such that 2^k <= n_par
+    Do While 2 ^ (k + 1) <= n_par
+        k = k + 1
+    Loop
+    
+    byes = IIf(2 ^ j = n_par, 2 ^ j, 2 ^ j - n_par)
+    
+    extra_matches = (n_par - byes) / 2
+    Call create_tiebrakers(stand, byes)
     
     Dim ad_stand As Range
-    Set ad_stand = Sheets("Mainstage").Range("Adjusted_Standings")
+    Set ad_stand = Sheets("Mainstage").Range("AdjustedStandings")
     
-    Dim k As Integer
     
-    For k = byes + 1 To parts.Rows.Count
-        'Call create_match("=3+2", "=3*6", 22, tables_vStart + k * 3, 2)
-        If ad_stand.Cells(1 + k, 3).Interior.Color = COLOR_FAIL Then
+    ' For a tournament of P = 2^n participants, the number of upperbracket rounds (excluding the grand finals) is equal to n-1
+    ' For a tournament of P != 2^n participants, the number of upperbracket rounds (excluding the grand finals) is equal j-1 where j is the _
+    highest integer that satisfies P < 2^j
+    
+    ' The extra matches are to be played between the lowest seeded players. A match is rated from the standing of the highest seeded player
+    '
+    
+    Dim matchup_array() As Integer
+    ReDim matchup_array(2 ^ j)
+    Call rec(1, 1, j, 0, matchup_array)
+    Dim jk As Integer
+    For jk = 0 To 2 ^ j - 1 Step 2
+        'Debug.Print matchup_array(jk) & " - " & matchup_array(jk + 1)
+    Next jk
+    
+    ' Starting x-position of the matches
+    Dim starting_x As Integer
+    ' Starting y-position of the matches
+    Dim starting_y As Integer
+    ' horizontal spacing between each match (round)
+    Dim x_spacing As Integer
+    ' vertical spacing between each match
+    Dim y_spacing As Integer
+    ' The width of the match box. This is for code flexibility
+    Dim match_width As Integer
+    ' The height of the match box. This is for code flexibility
+    Dim match_height As Integer
+    
+    starting_x = tables_hStart
+    starting_y = tables_vStart + ad_stand.Rows.Count + 3
+    x_spacing = 2
+    y_spacing = 2
+    match_width = 3
+    match_height = 2
+    
+    Dim round As Integer
+    For round = 1 To k
+        Dim round_offset As Integer
+        round_offset = Int(2 ^ (round - 2)) * match_height + Int(2 ^ (round - 2) - 1) * y_spacing
+        round_offset = IIf(round_offset < 0, 0, round_offset)
+        ' If there are any extra matches to be played, handle this on the first round
+        If extra_matches <> 0 And round = 1 Then
+            Dim extra_match As Integer
+            For extra_match = 1 To extra_matches
+            
+            Next extra_match
+            starting_x = starting_x + 3 + x_spacing
         End If
-        
-    Next k
+        Dim match As Integer
+        For match = 1 To 2 ^ (k - round)
+            Dim x As Integer
+            Dim y As Integer
+            x = starting_x + (round - 1) * (x_spacing + 3)
+            y = starting_y + round_offset + 2 ^ (round - 1) * (match - 1) * (y_spacing + match_height)
+            Call create_container(x, y, match_width, match_height) ' Placeholder for the real match container
+            
+            ' Connecting the lines between the matches with borders
+            If round <> k Then
+                Dim side_cell_R As Range
+                Set side_cell_R = Range(Cells(y, x + match_width), Cells(y, x + match_width + x_spacing / 2 - 1))
+                side_cell_R.Borders(xlEdgeBottom).LineStyle = XlLineStyle.xlContinuous
+                
+                If match Mod 2 = 1 Then
+                    Dim side_range_R As Range
+                    Set side_range_R = Range(Cells(y + 1, x + match_width), Cells(y + 2 ^ (round - 1) * (y_spacing + match_height), x + match_width))
+                    side_range_R.Borders(xlEdgeRight).LineStyle = XlLineStyle.xlContinuous
+                End If
+            End If
+            If round <> 1 Then
+                Dim side_cell_L As Range
+                Set side_cell_L = Range(Cells(y, x - 1), Cells(y, x - x_spacing / 2))
+                side_cell_L.Borders(xlEdgeBottom).LineStyle = XlLineStyle.xlContinuous
+            End If
+        Next match
+    
+    Next round
     
     
 End Sub

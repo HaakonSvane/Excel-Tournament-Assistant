@@ -121,8 +121,8 @@ If Me.Count > 0 Then
 End If
 End Property
 
-Public Property Get KeyValuePair(Index As Long) As Variant  ' returns KeyValuePair object
-    Set KeyValuePair = KeyValuePairs.Item(1 + Index)            ' collections are 1-based
+Public Property Get KeyValuePair(index As Long) As Variant  ' returns KeyValuePair object
+    Set KeyValuePair = KeyValuePairs.Item(1 + index)            ' collections are 1-based
 End Property
 
 Public Sub DebugPrint() ' optional sub for debugging the dictionary contents
